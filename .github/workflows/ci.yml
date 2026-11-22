@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: hierarchlit/frontend/package-lock.json
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: hierarchlit/frontend
+      - name: Test frontend
+        run: npm test
+        working-directory: hierarchlit/frontend
+      - name: Audit runtime frontend dependencies
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: hierarchlit/frontend
+      - name: Build frontend
+        run: npm run build
+        working-directory: hierarchlit/frontend
+      - name: Verify committed assets
+        run: git diff --exit-code -- hierarchlit/frontend/build
+
+  python:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package and development dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Check synchronized release metadata
+        run: python scripts/check_versions.py
+      - name: Check formatting
+        run: python -m ruff format --check .
+      - name: Lint
+        run: python -m ruff check .
+      - name: Type check
+        run: python -m mypy hierarchlit tests
+      - name: Test
+        run: python -m pytest
+
+  minimum-streamlit:
+    name: Streamlit 1.51 compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install minimum supported Streamlit
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install 'streamlit==1.51.*'
+      - name: Test minimum supported Streamlit
+        # Streamlit 1.51's AppTest replaces the v2 asset registry with a mock that
+        # cannot resolve package assets. Exercise the real registry separately.
+        run: |
+          python -m pytest --ignore=tests/test_example.py
+          python scripts/check_component_registry.py
+
+  distribution:
+    name: Distribution
+    needs: [frontend, python, minimum-streamlit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: hierarchlit/frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Rebuild frontend
+        run: npm ci && npm run build
+        working-directory: hierarchlit/frontend
+      - name: Verify committed assets
+        run: git diff --exit-code -- hierarchlit/frontend/build
+      - name: Build source and wheel distributions
+        run: python -m build
+      - name: Validate package metadata and wheel contents
+        run: |
+          python -m twine check dist/*
+          check-wheel-contents dist/*.whl
+      - name: Smoke test installed wheel
+        run: python scripts/smoke_test_wheel.py
+      - name: Rebuild wheel from source distribution
+        run: |
+          mkdir -p /tmp/hierarchlit-sdist-wheel
+          python -m pip wheel --no-deps --wheel-dir /tmp/hierarchlit-sdist-wheel dist/*.tar.gz
+          check-wheel-contents /tmp/hierarchlit-sdist-wheel/*.whl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error

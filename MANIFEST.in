@@ -1,0 +1,18 @@
+include LICENSE
+include README.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+include SECURITY.md
+include hierarchlit/py.typed
+include hierarchlit/THIRD_PARTY_NOTICES.md
+recursive-include hierarchlit/licenses *.txt
+include examples/*.py
+recursive-include docs *.md
+recursive-include scripts *.py
+include hierarchlit/frontend/package.json
+include hierarchlit/frontend/package-lock.json
+include hierarchlit/frontend/tsconfig.json
+include hierarchlit/frontend/vite.config.ts
+recursive-include hierarchlit/frontend/src *.css *.ts *.tsx
+recursive-include hierarchlit/frontend/scripts *.mjs
+recursive-include hierarchlit/frontend/build *.css *.js
