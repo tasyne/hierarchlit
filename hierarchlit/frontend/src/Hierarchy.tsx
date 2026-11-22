@@ -16,6 +16,7 @@ import { Icon } from "./icons";
 import {
   ancestorIds,
   appendSelectionRule,
+  appendVisibleRangeSelection,
   isAllSelected,
   isPartiallySelected,
   isSelected,
@@ -74,6 +75,7 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectionMenuOpen, setSelectionMenuOpen] = useState(false);
+  const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null);
   const [pendingParent, setPendingParent] = useState<string | null | undefined>(undefined);
   const [history, setHistory] = useState<Record<string, Array<string | null>>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -202,7 +204,11 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
   );
 
   const updateSelection = useCallback(
-    (node: HierarchyNodeData, forceSelected?: boolean): void => {
+    (
+      node: HierarchyNodeData,
+      forceSelected?: boolean,
+      extendRange = false,
+    ): void => {
       if (node.disabled || data.selectionMode === "none") return;
       let next: SelectionRuleData[];
       if (data.selectionMode === "single") {
@@ -216,6 +222,22 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
           },
         ];
       } else {
+        if (data.rangeSelection && extendRange && selectionAnchorId !== null) {
+          const rangeRules = appendVisibleRangeSelection(
+            selectionRules,
+            nodeRows.map((row) => row.node),
+            selectionAnchorId,
+            node.id,
+            parents,
+            data.cascadeSelection,
+          );
+          if (rangeRules !== null) {
+            setSelectionRules(rangeRules);
+            setStateValue("selection", { rules: rangeRules });
+            return;
+          }
+        }
+
         const selected = selectedById.get(node.id) ?? false;
         const partial = partialById.get(node.id) ?? false;
         next = appendSelectionRule(selectionRules, {
@@ -225,17 +247,21 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
           ancestorIds: ancestorIds(node.id, parents),
           scope: "node",
         });
+        setSelectionAnchorId(node.id);
       }
       setSelectionRules(next);
       setStateValue("selection", { rules: next });
     },
     [
       data.cascadeSelection,
+      data.rangeSelection,
       data.selectionMode,
+      nodeRows,
       partialById,
       parents,
       selectedById,
       selectionRules,
+      selectionAnchorId,
       setStateValue,
     ],
   );
@@ -278,6 +304,7 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
 
   const clearSelection = useCallback((): void => {
     setSelectionRules([]);
+    setSelectionAnchorId(null);
     setSelectionMenuOpen(false);
     setStateValue("selection", { rules: [] });
   }, [setStateValue]);
@@ -294,6 +321,7 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
           })
         : [];
       setSelectionRules(next);
+      setSelectionAnchorId(null);
       setStateValue("selection", { rules: next });
     },
     [selectionRules, setStateValue],
@@ -356,7 +384,7 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
         break;
       case " ":
         event.preventDefault();
-        updateSelection(current.node);
+        updateSelection(current.node, event.shiftKey ? true : undefined, event.shiftKey);
         break;
     }
   };
@@ -466,7 +494,9 @@ export function Hierarchy({ data, setStateValue, setTriggerValue }: Props) {
                       actionMap={actionMap}
                       menuOpen={openMenuId === row.node.id}
                       onActive={() => setActiveId(row.node.id)}
-                      onSelect={(selected) => updateSelection(row.node, selected)}
+                      onSelect={(selected, extendRange) =>
+                        updateSelection(row.node, selected, extendRange)
+                      }
                       onExpand={() => updateExpanded(row.node)}
                       onActivate={() => activate(row.node)}
                       onMenu={() => {
@@ -623,7 +653,7 @@ interface NodeRowProps {
   actionMap: ReadonlyMap<string, ActionData>;
   menuOpen: boolean;
   onActive: () => void;
-  onSelect: (selected?: boolean) => void;
+  onSelect: (selected?: boolean, extendRange?: boolean) => void;
   onExpand: () => void;
   onActivate: () => void;
   onMenu: () => void;
@@ -667,7 +697,7 @@ function NodeRow({
       aria-expanded={row.node.expandable ? expanded : undefined}
       aria-disabled={row.node.disabled || undefined}
       onMouseDown={onActive}
-      onClick={() => onSelect()}
+      onClick={(event) => onSelect(undefined, event.shiftKey)}
       onDoubleClick={onActivate}
     >
       <button
@@ -696,9 +726,13 @@ function NodeRow({
             if (element) element.indeterminate = indeterminate;
           }}
           disabled={row.node.disabled}
-          onChange={(event) =>
-            onSelect(indeterminate ? true : event.currentTarget.checked)
-          }
+          onChange={(event) => {
+            const nativeEvent = event.nativeEvent as globalThis.MouseEvent;
+            onSelect(
+              indeterminate ? true : event.currentTarget.checked,
+              nativeEvent.shiftKey,
+            );
+          }}
           onClick={(event) => event.stopPropagation()}
         />
       ) : null}

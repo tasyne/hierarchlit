@@ -68,6 +68,7 @@ result = hierarchy(
     key="objects",
     selection_mode="multiple",
     cascade_selection=True,
+    range_selection=True,
     pagination=PaginationConfig(mode="paged", page_size=100),
     actions=(
         HierarchyAction("refresh", "Refresh", icon="refresh", placement="inline"),
@@ -235,6 +236,12 @@ checks every loaded descendant and automatically applies to descendants loaded b
 expansion or pagination. Deselecting a child creates a compact exclusion rule and gives
 its ancestors an indeterminate checkbox. Set `cascade_selection=False` when every
 checkbox should be independent.
+
+Set `range_selection=True` to let users Shift-click two nodes and select the contiguous
+visible rows between them. Range selection is intentionally bounded to nodes already in
+the flattened browser view: it skips pager controls and does not load intervening pages.
+Containers keep the configured cascade behavior, and the resulting state remains a
+normal ordered set of `SelectionRule` objects.
 
 The top-level global checkbox is intentionally opt-in because not every backend or
 workflow permits operations over an entire result set:

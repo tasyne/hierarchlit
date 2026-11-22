@@ -139,6 +139,33 @@ def test_empty_selection_rules_do_not_restore_defaults(
     assert mounts[-1]["data"]["initialSelectionRules"] == []
 
 
+def test_range_selection_is_optional_and_forwarded(
+    fake_streamlit: tuple[Any, list[dict[str, Any]]],
+) -> None:
+    _, mounts = fake_streamlit
+
+    component.hierarchy(
+        RecordingProvider(),
+        key="tree",
+        selection_mode="multiple",
+        range_selection=True,
+    )
+
+    assert mounts[-1]["data"]["rangeSelection"] is True
+
+
+def test_range_selection_requires_multiple_selection(
+    fake_streamlit: tuple[Any, list[dict[str, Any]]],
+) -> None:
+    with pytest.raises(ValueError, match="range_selection"):
+        component.hierarchy(
+            RecordingProvider(),
+            key="tree",
+            selection_mode="single",
+            range_selection=True,
+        )
+
+
 def test_theme_is_forwarded_to_frontend(
     fake_streamlit: tuple[Any, list[dict[str, Any]]],
 ) -> None:

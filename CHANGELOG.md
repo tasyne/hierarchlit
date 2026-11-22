@@ -12,6 +12,7 @@ All notable changes to `hierarchlit` are documented here. The project follows
 - Provider-neutral lazy expansion and cursor pagination at every hierarchy level.
 - Bounded browser and Python page caches for large result sets.
 - Single, multiple, cascading, and global selection with lazy rule resolution.
+- Optional Shift-click selection across contiguous visible hierarchy rows.
 - Configurable per-item and bulk actions, status icons, and theme colors.
 - Lazy iteration of selection rules for backend bulk operations.
 - Typed Python contracts and a packaged, production-optimized frontend bundle.

@@ -311,6 +311,7 @@ def hierarchy(
     actions: Sequence[HierarchyAction] = (),
     selection_mode: SelectionMode = "single",
     cascade_selection: bool = True,
+    range_selection: bool = False,
     selection_toolbar: SelectionToolbarConfig | None = None,
     pagination: PaginationConfig | None = None,
     theme: HierarchyTheme | None = None,
@@ -359,6 +360,8 @@ def hierarchy(
         raise ValueError("single selection mode accepts at most one default selection")
     if selection_mode == "none" and selected_defaults:
         raise ValueError("selection mode 'none' does not accept default selections")
+    if range_selection and selection_mode != "multiple":
+        raise ValueError("range_selection requires selection_mode='multiple'")
     if (
         selection_toolbar is not None
         and selection_toolbar.show_select_all
@@ -451,6 +454,7 @@ def hierarchy(
         "actions": [action.to_wire() for action in actions],
         "selectionMode": selection_mode,
         "cascadeSelection": cascade_selection,
+        "rangeSelection": range_selection,
         "selectionToolbar": (None if selection_toolbar is None else selection_toolbar.to_wire()),
         "pagination": pagination.to_wire(),
         "theme": theme.to_wire(),

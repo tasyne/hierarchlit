@@ -1,4 +1,4 @@
-import type { PageData, SelectionRuleData } from "./types";
+import type { HierarchyNodeData, PageData, SelectionRuleData } from "./types";
 
 export function parentMap(pages: PageData[]): Map<string, string | null> {
   const result = new Map<string, string | null>();
@@ -97,6 +97,34 @@ export function appendSelectionRule(
     ),
     rule,
   ];
+}
+
+export function appendVisibleRangeSelection(
+  rules: readonly SelectionRuleData[],
+  visibleNodes: readonly HierarchyNodeData[],
+  anchorId: string,
+  targetId: string,
+  parents: ReadonlyMap<string, string | null>,
+  cascadeSelection: boolean,
+): SelectionRuleData[] | null {
+  const anchorIndex = visibleNodes.findIndex((node) => node.id === anchorId);
+  const targetIndex = visibleNodes.findIndex((node) => node.id === targetId);
+  if (anchorIndex < 0 || targetIndex < 0) return null;
+
+  const start = Math.min(anchorIndex, targetIndex);
+  const end = Math.max(anchorIndex, targetIndex);
+  let next = [...rules];
+  for (const node of visibleNodes.slice(start, end + 1)) {
+    if (node.disabled || isSelected(node.id, next, parents)) continue;
+    next = appendSelectionRule(next, {
+      nodeId: node.id,
+      selected: true,
+      cascade: cascadeSelection && node.expandable,
+      ancestorIds: ancestorIds(node.id, parents),
+      scope: "node",
+    });
+  }
+  return next;
 }
 
 export function isAllSelected(rules: readonly SelectionRuleData[]): boolean {

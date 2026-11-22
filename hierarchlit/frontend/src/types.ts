@@ -63,6 +63,7 @@ export interface HierarchyData {
   actions: ActionData[];
   selectionMode: SelectionMode;
   cascadeSelection: boolean;
+  rangeSelection: boolean;
   selectionToolbar: SelectionToolbarData | null;
   pagination: PaginationData;
   theme: ThemeData;

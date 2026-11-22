@@ -30,6 +30,7 @@ result = hierarchy(
     provider,
     key="filesystem-hierarchy",
     selection_mode="multiple",
+    range_selection=True,
     pagination=PaginationConfig(page_size=100, max_browser_nodes=2_500),
     selection_toolbar=SelectionToolbarConfig(
         show_select_all=True,

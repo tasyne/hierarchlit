@@ -13,6 +13,7 @@ hierarchy(
     actions=(),
     selection_mode="single",
     cascade_selection=True,
+    range_selection=False,
     selection_toolbar=None,
     pagination=None,
     theme=None,
@@ -73,6 +74,12 @@ lazy and provider-neutral.
 
 Use `provider.iter_selected_ids()` only when an operation truly needs individual IDs.
 For very large backends, prefer translating rules into a backend-native operation.
+
+Set `range_selection=True` with multiple selection to enable Shift-click selection.
+Ranges follow the currently visible flattened node order, skip disabled nodes and pager
+controls, and never fetch unloaded pages. Containers in the range retain normal
+`cascade_selection` behavior. The implementation emits ordinary node rules, so bulk
+actions and lazy Python resolution require no separate range contract.
 
 ## Configuration
 

@@ -126,6 +126,7 @@ result = hierarchy(
     key="large-hierarchy",
     revision=len(reviewed_selections),
     selection_mode="multiple",
+    range_selection=True,
     pagination=PaginationConfig(
         mode="paged",
         page_size=25,
